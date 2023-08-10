@@ -1,7 +1,12 @@
-# Liteflayer
-Liteflayer is an efficient brainwallet cracker tailored for Litecoin. It leverages the power of Python, while maintaining performance on par with native C applications like Brainflayer.
+Liteflayer is an **efficient** brainwallet cracker tailored for Litecoin. It leverages the power of Python, while maintaining performance on par with native C applications like Brainflayer.
 
-** Make sure to put the Litecoin addresses you want to check against in a file named 'addresses.txt'
+> **Make sure to put the Litecoin addresses you want to check against in a file named 'addresses.txt'**
+
+- **High-Speed Key Derivation:** With the _bit_ library, Liteflayer swiftly derives public keys and addresses from private keys.
+- **Rapid Membership Checks:** The use of _pybloomfiltermmap3_ ensures that address checks against large datasets are lightning-fast, optimizing the cracking process.
+- **Multiprocessing Support:** Liteflayer distributes tasks across all available CPU cores, further bolstering the cracking speed.
+- **Customizable Wordlist Generation:** Users can customize wordlist generation parameters, allowing for targeted brute-force attacks.
+
 
 
 ![menu](https://github.com/BlueCookieWookie/Liteflayer/assets/118572084/0df7b78f-0f4b-4bff-af5b-be19690af869)
