@@ -203,7 +203,6 @@ class WordlistGenerator:
         """
 
     def generate_from_pattern(self, pattern: str, charset: str) -> str:
-        """Generate words from a given pattern and charset, yielding one word at a time."""
         if not pattern:
             yield ""
             return
@@ -212,7 +211,6 @@ class WordlistGenerator:
         remainder = pattern[1:]
 
         if char == "?":
-            # Check for the range symbol '-'
             j = 1
             while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
                 j += 1
@@ -233,49 +231,35 @@ class WordlistGenerator:
                     for word in self.generate_from_pattern(remainder, charset):
                         yield ''.join(combo) + word
 
-        elif pattern[:2] == "!U":
-            count = 1
-            if len(pattern) > 2 and pattern[2].isdigit():
-                count = int(pattern[2])
-                remainder = pattern[3:]
-            uppercase = string.ascii_uppercase
-            for combo in itertools.product(uppercase, repeat=count):
-                for word in self.generate_from_pattern(remainder, charset):
-                    yield ''.join(combo) + word
+        elif pattern[:2] in ['!U', '!L', '!#', '!@']:
+            j = 2
+            while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
+                j += 1
 
-        elif pattern[:2] == "!L":
-            count = 1
-            if len(pattern) > 2 and pattern[2].isdigit():
-                count = int(pattern[2])
-                remainder = pattern[3:]
-            lowercase = string.ascii_lowercase
-            for combo in itertools.product(lowercase, repeat=count):
-                for word in self.generate_from_pattern(remainder, charset):
-                    yield ''.join(combo) + word
+            if '-' in pattern[2:j]:
+                start, end = map(int, pattern[2:j].split('-'))
+                remainder = pattern[j:]
+            else:
+                raise ValueError(f"Invalid pattern for {pattern[:2]}. Expected a range format like 1-2.")
 
-        elif pattern[:2] == "!#":
-            count = 1
-            if len(pattern) > 2 and pattern[2].isdigit():
-                count = int(pattern[2])
-                remainder = pattern[3:]
-            numbers = string.digits
-            for combo in itertools.product(numbers, repeat=count):
-                for word in self.generate_from_pattern(remainder, charset):
-                    yield ''.join(combo) + word
+            if pattern[:2] == '!U':
+                subset = string.ascii_uppercase
+            elif pattern[:2] == '!L':
+                subset = string.ascii_lowercase
+            elif pattern[:2] == '!#':
+                subset = string.digits
+            elif pattern[:2] == '!@':
+                subset = "-=!@#$%^&*()_+[]\{}|;:',./?~"
 
-        elif pattern[:2] == "!@":
-            count = 1
-            if len(pattern) > 2 and pattern[2].isdigit():
-                count = int(pattern[2])
-                remainder = pattern[3:]
-            special_chars = "-=!@#$%^&*()_+[]\{}|;:',./?~"
-            for combo in itertools.product(special_chars, repeat=count):
-                for word in self.generate_from_pattern(remainder, charset):
-                    yield ''.join(combo) + word
+            for count in range(start, end + 1):
+                for combo in itertools.product(subset, repeat=count):
+                    for word in self.generate_from_pattern(remainder, charset):
+                        yield ''.join(combo) + word
 
         else:
             for word in self.generate_from_pattern(remainder, charset):
                 yield char + word
+
 
 
     def collect_inputs(self) -> bool:
@@ -340,18 +324,30 @@ class WordlistGenerator:
                 else:
                     total *= charset_size
                     i += 1
-            elif char in ['!U', '!L', '!#', '!@']:
-                count = 1
-                if i+2 < len(pattern) and pattern[i+2].isdigit():
-                    count = int(pattern[i+2])
-                    i += 3
+            elif pattern[i:i+2] in ['!U', '!L', '!#', '!@']:
+                j = i + 2
+                while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
+                    j += 1
+
+                if '-' in pattern[i+2:j]:
+                    start, end = map(int, pattern[i+2:j].split('-'))
+                    if pattern[i:i+2] == '!U':
+                        subset_size = 26  # Uppercase letters
+                    elif pattern[i:i+2] == '!L':
+                        subset_size = 26  # Lowercase letters
+                    elif pattern[i:i+2] == '!#':
+                        subset_size = 10  # Digits
+                    elif pattern[i:i+2] == '!@':
+                        subset_size = 28  # Special characters
+                    total *= sum([subset_size**k for k in range(start, end+1)])
+                    i = j
                 else:
-                    i += 2
-                total *= count
+                    raise ValueError(f"Invalid pattern for {pattern[i:i+2]}. Expected a range format like 1-2.")
             else:
                 i += 1
 
         return total
+
 
 
     def generate_next_word(self):
@@ -372,50 +368,6 @@ class WordlistGenerator:
             sys.stdout.write(progress_line)
             sys.stdout.flush()
             time.sleep(0.1)  # Adjusting sleep time to 1 second for more frequent updates
-
-
-    def estimate_file_size(pattern: str, charset: str) -> str:
-        """Estimate the file size based on the pattern."""
-        charset_size = len(charset)
-        total_combinations = 1  # for the base case
-        avg_length = 0
-
-        i = 0
-        while i < len(pattern):
-            char = pattern[i]
-            if char == '?':
-                j = i + 1
-                while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
-                    j += 1
-                if '-' in pattern[i+1:j]:
-                    start, end = map(int, pattern[i+1:j].split('-'))
-                    avg_length += (start + end) / 2
-                    total_combinations *= sum([charset_size**k for k in range(start, end+1)])
-                    i = j
-                else:
-                    avg_length += 1
-                    total_combinations *= charset_size
-                    i += 1
-            elif char in ['!U', '!L', '!#', '!@']:
-                count = 1
-                if i+2 < len(pattern) and pattern[i+2].isdigit():
-                    count = int(pattern[i+2])
-                    i += 3
-                else:
-                    i += 2
-                avg_length += count
-                total_combinations *= count
-            else:
-                avg_length += 1
-                i += 1
-
-        size_bytes = total_combinations * (avg_length + 1)  # +1 for the newline character
-
-        # Convert to human-readable format
-        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if size_bytes < 1024:
-                return f"{size_bytes:.2f} {unit}"
-            size_bytes /= 1024.0
 
 
     async def generate_wordlist(self, check=True):
@@ -505,6 +457,52 @@ class WordlistGenerator:
         self.hits = 0
         self.start_time = None
 
+    def estimate_file_size(self, pattern: str, charset: str) -> str:
+        """Estimate the file size based on the pattern."""
+        charset_size = len(charset)
+        total_combinations = 1  # for the base case
+        avg_length = 0
+
+        i = 0
+        while i < len(pattern):
+            char = pattern[i]
+            if char == '?':
+                j = i + 1
+                while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
+                    j += 1
+                if '-' in pattern[i+1:j]:
+                    start, end = map(int, pattern[i+1:j].split('-'))
+                    avg_length += (start + end) / 2
+                    total_combinations *= sum([charset_size**k for k in range(start, end+1)])
+                    i = j
+                else:
+                    avg_length += 1
+                    total_combinations *= charset_size
+                    i += 1
+            elif char in ['!U', '!L', '!#', '!@']:
+                count = 1
+                if i+2 < len(pattern) and pattern[i+2].isdigit():
+                    count = int(pattern[i+2])
+                    i += 3
+                else:
+                    i += 2
+                avg_length += count
+                total_combinations *= count
+            else:
+                avg_length += 1
+                i += 1
+
+        size_bytes = total_combinations * (avg_length + 1)  # +1 for the newline character
+
+        # Convert to human-readable format
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size_bytes < 1024:
+                return f"{size_bytes:.2f} {unit}"
+            size_bytes /= 1024.0
+
+
+
+
 
 if __name__ == '__main__':
     generator = WordlistGenerator()
@@ -537,58 +535,27 @@ if __name__ == '__main__':
             if not success:
                 continue
 
-            def estimate_file_size(pattern: str, charset: str) -> str:
-                """Estimate the file size based on the pattern."""
-                charset_size = len(charset)
-                total_combinations = 1  # for the base case
-                avg_length = 0
+            # Estimate the total number of words in the wordlist
+            total_words = generator.estimate_total_combinations(generator.pattern)
+            print(colored(f"\nEstimated total number of words: {total_words}", "yellow"))
 
-                i = 0
-                while i < len(pattern):
-                    char = pattern[i]
-                    if char == '?':
-                        j = i + 1
-                        while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
-                            j += 1
-                        if '-' in pattern[i+1:j]:
-                            start, end = map(int, pattern[i+1:j].split('-'))
-                            avg_length += (start + end) / 2
-                            total_combinations *= sum([charset_size**k for k in range(start, end+1)])
-                            i = j
-                        else:
-                            avg_length += 1
-                            total_combinations *= charset_size
-                            i += 1
-                    elif char in ['!U', '!L', '!#', '!@']:
-                        count = 1
-                        if i+2 < len(pattern) and pattern[i+2].isdigit():
-                            count = int(pattern[i+2])
-                            i += 3
-                        else:
-                            i += 2
-                        avg_length += count
-                        total_combinations *= count
-                    else:
-                        avg_length += 1
-                        i += 1
-
-                size_bytes = total_combinations * (avg_length + 1)  # +1 for the newline character
-
-                # Convert to human-readable format
-                for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-                    if size_bytes < 1024:
-                        return f"{size_bytes:.2f} {unit}"
-                    size_bytes /= 1024.0
-
-            estimated_size = estimate_file_size(generator.pattern, generator.charset)
-            proceed = input(f"Estimated file size: {estimated_size}. Do you want to proceed? (Y/N): ").strip().lower()
+            estimated_size = generator.estimate_file_size(generator.pattern, generator.charset)
+            print(colored(f"Estimated file size: {estimated_size}.", "yellow"))
+            proceed = input("Do you want to proceed? (Y/N): ").strip().lower()
             if proceed != 'y':
                 continue
+
+
+
+
+
 
             generator.start_time = time.time()
             generator.is_processing = True
             asyncio.run(generator.generate_wordlist(check=False))
             print("\nWordlist saved to wordlist.txt.")
+
+
 
 
 
