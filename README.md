@@ -1,6 +1,6 @@
 # Liteflayer - A Fast Litecoin Brainwallet Cracker Written In Python
 
-## Overview:
+## ***Overview:***
 
 Liteflayer is a tool inspired by Brainflayer but designed with a built-in wordlist/phrase generator to streamline generated wordlists based on intricate patterns and subsequently converting each line into private keys, public keys, and addresses and then checks them against a database of Litecoin addresses to find a match. Unlike traditional wordlist generators, this tool integrates a distinctive wildcard pattern system with a position range feature. This ability provides users with an easier experience due to the streamlining of words directly into the checker.
 
@@ -8,7 +8,7 @@ Liteflayer is a tool inspired by Brainflayer but designed with a built-in wordli
 
 > I have not had luck getting this to run on Windows unfortunately but you can just use WSL2 anyways.
 
-**REMINDER: Later on, if you ever modify your addresses.txt file, make sure to delete the addresses.bloom file before running the program again or else it wont recognize the changes!**
+***REMINDER: Later on, if you ever modify your addresses.txt file, make sure to delete the addresses.bloom file before running the program again or else it wont recognize the changes!***
 
 
 
@@ -19,7 +19,7 @@ Liteflayer is a tool inspired by Brainflayer but designed with a built-in wordli
 3. **Efficient Checking Mechanism**: Using a mix of custom made functions, as well as the 'Bit', 'hashlib' library, the tool efficiently validates the generated wordlists allowing you to check against 1000000 GB of words without having to actually store those words on your computer.
 4. **Real-Time Progress Display**: Users are kept informed with an intuitive progress bar, showing the current word, overall progress, hits, and words per second.
 
-## Detailed Explanation of the Wildcard Pattern System:
+## ***Wildcard Pattern System:***
 
 ### Basic Wildcards:
 
