@@ -1,11 +1,15 @@
-# Litecoin Wordlist Generator
+# Liteflayer - A Really Fast Litecoin Brainwallet Cracker
 
 ## Overview:
 
-The Litecoin Wordlist Generator is a sophisticated tool designed to generate wordlists based on intricate patterns and subsequently converting each line into private keys, public keys, and addresses and then checks them against a database of Litecoin addresses to find a match. Unlike traditional wordlist generators, our tool integrates a distinctive wildcard pattern system with a position range feature. This enhancement provides users with greater flexibility and precision in custom wordlist generation.
+Liteflayer is a sophisticated tool inspired by Brainflayer but designed to work for Litecoin and streamline generated wordlists based on intricate patterns and subsequently converting each line into private keys, public keys, and addresses and then checks them against a database of Litecoin addresses to find a match. Unlike traditional wordlist generators, our tool integrates a distinctive wildcard pattern system with a position range feature. This enhancement provides users with greater flexibility and precision in custom wordlist generation.
 
 This tool will usually do 100k+ checks per second on modern hardware. 
 I have not had luck getting this to run on Windows unfortunately but you can just use WSL2 anyways.
+
+**REMINDER: Later on if you ever modify you addresses.txt file, make sure to delete the addresses.bloom.file before running the program again or else it wont recognize the changes!**
+
+
 
 ## Features:
 
@@ -51,21 +55,9 @@ The wildcard system is flexible enough to be integrated with regular strings:
 
 ## How To Use:
 
-1. **Run the Program**: Execute the tool, and you'll be greeted with an interactive command-line interface.
+1. **Run the Program**: python3 liteflayer.py
 2. **Choose Your Option**: Select from generating and checking a wordlist, generating a wordlist only, using a custom wordlist for checking, or exit.
 3. **Define Your Pattern**: If generating a wordlist, you'll be prompted to provide a pattern. Use the wildcard system explained above to define your pattern.
 4. **Let the Tool Work**: The generator will create the wordlist based on your pattern and, if chosen, check the wordlist against a database of Litecoin addresses.
 
-## Contribution:
-
-Your insights can make this tool even better! We warmly welcome contributors to:
-
-- Suggest new features.
-- Optimize the existing code.
-- Report bugs or issues.
-- Submit pull requests.
-
-## Disclaimer:
-
-This tool is developed strictly for educational and legitimate purposes. Any misuse or malicious intent is strongly discouraged and is not the aim of this project.
 
