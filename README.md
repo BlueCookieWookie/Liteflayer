@@ -1,17 +1,68 @@
-# _Liteflayer_
-is an extremely **optimized** brainwallet cracker tailored for Litecoin. It leverages the power of Python and is based on the concept of _Brainflayer_ but with an added wordlist generator built right in that allows you to easily streamline huge wordlists to Liteflayer without having to give up the disk space to store the entire list.
+# Litecoin Wordlist Generator
 
-> **- Make sure to put the Litecoin addresses that you want to check against inside a file named 'addresses.txt'**
-> 
-> **- If you modify your addresses.txt list, make sure to delete the 'addresses.bloom' file before running again or else it won't include the new changes**
+## Overview:
 
+The Litecoin Wordlist Generator is a sophisticated tool designed to generate wordlists based on intricate patterns and subsequently check these wordlists against a database of Litecoin addresses. Unlike traditional wordlist generators such as "Crunch", our tool integrates a distinctive wildcard pattern system with a position range feature. This enhancement provides users with greater flexibility and precision in custom wordlist generation.
 
+## Features:
 
+1. **Custom Wordlist Generation**: The core feature of this tool, it allows users to define patterns and produce wordlists tailored to their requirements.
+2. **Wildcard Patterns with Position Ranges**: An advanced system to define patterns, allowing users to specify not just character types, but also the number of characters.
+3. **Efficient Checking Mechanism**: Using multi-process checking, the tool efficiently validates the generated wordlists against a database of Litecoin addresses, saving valuable time.
+4. **Real-Time Progress Display**: Users are kept informed with an intuitive progress bar, showing the current word, overall progress, hits, and words per second.
 
+## Detailed Explanation of the Wildcard Pattern System:
 
+### Basic Wildcards:
 
-![menu](https://github.com/BlueCookieWookie/Liteflayer/assets/118572084/0df7b78f-0f4b-4bff-af5b-be19690af869)
+These symbols represent broad categories of characters:
 
-![inprogrewss](https://github.com/BlueCookieWookie/Liteflayer/assets/118572084/a5716501-3c00-4796-be0f-cb99dfe52293)
+- `!U!`: Represents uppercase letters, spanning A to Z.
+- `!L!`: Represents lowercase letters, spanning a to z.
+- `!#`: Represents numeric digits, spanning 0 to 9.
+- `!@!`: Represents special characters from the set: -=!@#$%^&*()_+[]\{}|;:',./?~
+- `?`: A universal wildcard that represents characters from any of the sets mentioned above.
 
-![aa](https://github.com/BlueCookieWookie/Liteflayer/assets/118572084/84549a72-18c6-42a8-9320-bc2c929a9135)
+### Number Range Feature:
+
+A system to specify the number of characters in a combination:
+
+- `!U3!`: This pattern would generate combinations of three uppercase letters, ranging from AAA to ZZZ.
+- `!L2!`: This would generate combinations of two lowercase letters, ranging from aa to zz.
+- `!#4!`: Generates combinations of four numeric digits, ranging from 0000 to 9999.
+- `!@2!`: Generates combinations of two special characters from the set mentioned above.
+
+### Dynamic Range:
+
+This feature adds flexibility by letting you define a starting and ending range for characters:
+
+- `?1-3`: For instance, this pattern would produce combinations ranging from a single character to three characters long, i.e., a, aa, aaa to z, zz, zzz.
+- `!U1-2!`: Generates combinations of 1 to 2 uppercase letters, ranging from A to ZZ.
+
+### Integration with Regular Strings:
+
+The wildcard system is flexible enough to be integrated with regular strings:
+
+- `iLove!U!`: This pattern, for instance, would generate strings like 'iLoveA', 'iLoveB', up to 'iLoveZ'.
+- `Pass!#2!`: This would produce strings like 'Pass00', 'Pass01', and so on up to 'Pass99'.
+
+## How To Use:
+
+1. **Run the Program**: Execute the tool, and you'll be greeted with an interactive command-line interface.
+2. **Choose Your Option**: Select from generating and checking a wordlist, generating a wordlist only, using a custom wordlist for checking, or exit.
+3. **Define Your Pattern**: If generating a wordlist, you'll be prompted to provide a pattern. Use the wildcard system explained above to define your pattern.
+4. **Let the Tool Work**: The generator will create the wordlist based on your pattern and, if chosen, check the wordlist against a database of Litecoin addresses.
+
+## Contribution:
+
+Your insights can make this tool even better! We warmly welcome contributors to:
+
+- Suggest new features.
+- Optimize the existing code.
+- Report bugs or issues.
+- Submit pull requests.
+
+## Disclaimer:
+
+This tool is developed strictly for educational and legitimate purposes. Any misuse or malicious intent is strongly discouraged and is not the aim of this project.
+
