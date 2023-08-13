@@ -2,13 +2,16 @@
 
 ## Overview:
 
-The Litecoin Wordlist Generator is a sophisticated tool designed to generate wordlists based on intricate patterns and subsequently check these wordlists against a database of Litecoin addresses. Unlike traditional wordlist generators such as "Crunch", our tool integrates a distinctive wildcard pattern system with a position range feature. This enhancement provides users with greater flexibility and precision in custom wordlist generation.
+The Litecoin Wordlist Generator is a sophisticated tool designed to generate wordlists based on intricate patterns and subsequently converting each line into private keys, public keys, and addresses and then checks them against a database of Litecoin addresses to find a match. Unlike traditional wordlist generators, our tool integrates a distinctive wildcard pattern system with a position range feature. This enhancement provides users with greater flexibility and precision in custom wordlist generation.
+
+This tool will usually do 100k+ checks per second on modern hardware. 
+I have not had luck getting this to run on Windows unfortunately.
 
 ## Features:
 
 1. **Custom Wordlist Generation**: The core feature of this tool, it allows users to define patterns and produce wordlists tailored to their requirements.
 2. **Wildcard Patterns with Position Ranges**: An advanced system to define patterns, allowing users to specify not just character types, but also the number of characters.
-3. **Efficient Checking Mechanism**: Using multi-process checking, the tool efficiently validates the generated wordlists against a database of Litecoin addresses, saving valuable time.
+3. **Efficient Checking Mechanism**: Using a mix of custom made functions, as well as the 'Bit', 'hashlib' library, the tool efficiently validates the generated wordlists allowing you to check against 1000000 GB of words without having to actually store those words on your computer.
 4. **Real-Time Progress Display**: Users are kept informed with an intuitive progress bar, showing the current word, overall progress, hits, and words per second.
 
 ## Detailed Explanation of the Wildcard Pattern System:
