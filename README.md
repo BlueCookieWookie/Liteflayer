@@ -8,7 +8,7 @@ Liteflayer is a tool inspired by Brainflayer but designed with a built-in wordli
 
 > I have not had luck getting this to run on Windows unfortunately but you can just use WSL2 anyways.
 
-**REMINDER: Later on if you ever modify you addresses.txt file, make sure to delete the addresses.bloom.file before running the program again or else it wont recognize the changes!**
+**REMINDER: Later on, if you ever modify your addresses.txt file, make sure to delete the addresses.bloom file before running the program again or else it wont recognize the changes!**
 
 
 
