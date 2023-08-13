@@ -5,7 +5,7 @@
 The Litecoin Wordlist Generator is a sophisticated tool designed to generate wordlists based on intricate patterns and subsequently converting each line into private keys, public keys, and addresses and then checks them against a database of Litecoin addresses to find a match. Unlike traditional wordlist generators, our tool integrates a distinctive wildcard pattern system with a position range feature. This enhancement provides users with greater flexibility and precision in custom wordlist generation.
 
 This tool will usually do 100k+ checks per second on modern hardware. 
-I have not had luck getting this to run on Windows unfortunately.
+I have not had luck getting this to run on Windows unfortunately but you can just use WSL2 anyways.
 
 ## Features:
 
