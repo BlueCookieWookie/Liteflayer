@@ -1,8 +1,10 @@
 import os
 import time
+import threading
 import itertools
 import string
 import hashlib
+import sys
 import base58
 import binascii
 import aiofiles
@@ -62,9 +64,9 @@ class LitecoinAddress:
         return addresses
 
 
-def custom_hash_func(obj):
-    h = sha256(dumps(obj)).digest()
-    return int.from_bytes(h[:16], "big") - 2**127
+    def custom_hash_func(obj):
+        h = sha256(dumps(obj)).digest()
+        return int.from_bytes(h[:16], "big") - 2**127
 
 class Checker:
     """Utility class for checking generated addresses against a database."""
@@ -82,7 +84,6 @@ class Checker:
             if uncompressed_address in bloom_filter or compressed_address in bloom_filter:
                 potential_hits.append(word)
         return potential_hits
-
 
 
     @staticmethod
@@ -141,25 +142,34 @@ class Checker:
                     hit_count += 1
         return hit_count
 
-
-
-
-
+    def print_progress(self):
+        """Print progress of wordlist generation."""
+        while self.is_processing:
+            elapsed_time = time.time() - self.start_time
+            wps = self.current_position / elapsed_time
+            percentage = (self.current_position / self.total_combinations) * 100
+            progress_line = colored(f"Current Word: [{self.current_word}] -- Progress: ({self.current_position}/{self.total_combbinations}) [{percentage:.2f}%] -- Hits: [{self.hits}] -- WPS: [{wps:.2f}]", "green")
+            print(progress_line, end="")
+            time.sleep(0.3)
+            print("\033[K\033[F", end="")  # Clear current line and move cursor to the beginning of the line.
 
 
     @staticmethod
     async def print_hit_data(hit_data: dict):
         """Print hit data."""
-        print(colored(f"\nHit found for word: '{hit_data['word']}'", "yellow"))
+        print(colored(f"\n{'=' * 80}", "yellow"))
+        print(colored(f"Hit found for word: '{hit_data['word']}'", "yellow"))
+        print(colored(f"{'=' * 80}", "yellow"))
+    
         uncompressed_address = LitecoinAddress.public_key_to_litecoin_address(hit_data['uncompressed_public_key'], is_compressed=False)
         compressed_address = LitecoinAddress.public_key_to_litecoin_address(hit_data['compressed_public_key'])
         async with aiofiles.open(HITS_FILE, 'a') as f:
             await f.write(f"Word: {hit_data['word']} - Private Key: {hit_data['private_key']} - Uncompressed Address: {uncompressed_address} - Compressed Address: {compressed_address}\n")
-        print(colored(f"Private Key: {hit_data['private_key']}", "magenta"))
-        print(colored(f"Public Key (Uncompressed): {hit_data['uncompressed_public_key']}", "magenta"))
-        print(colored(f"Uncompressed Address: {uncompressed_address}", "blue"))
-        print(colored(f"Public Key (Compressed): {hit_data['compressed_public_key']}", "magenta"))
-        print(colored(f"Compressed Address: {compressed_address}", "blue"))
+        print(colored(f"Private Key                 : {hit_data['private_key']}", "magenta"))
+        print(colored(f"Public Key (Uncompressed)   : {hit_data['uncompressed_public_key']}", "magenta"))
+        print(colored(f"Uncompressed Address        : {uncompressed_address}", "blue"))
+        print(colored(f"Public Key (Compressed)     : {hit_data['compressed_public_key']}", "magenta"))
+        print(colored(f"Compressed Address          : {compressed_address}", "blue"))
 
 
 
@@ -192,130 +202,231 @@ class WordlistGenerator:
         {title}
         """
 
-    @staticmethod
-    def generate_from_pattern(pattern: str, charset: str) -> list:
-        generated_words = [""]
+    def generate_from_pattern(self, pattern: str, charset: str) -> str:
+        """Generate words from a given pattern and charset, yielding one word at a time."""
+        if not pattern:
+            yield ""
+            return
 
-        i = 0
-        while i < len(pattern):
-            char = pattern[i]
+        char = pattern[0]
+        remainder = pattern[1:]
 
-            if char == "?":
-                generated_words = [word + c for word in generated_words for c in charset]
+        if char == "?":
+            # Check for the range symbol '-'
+            j = 1
+            while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
+                j += 1
 
-            elif pattern[i:i+2] == "!U":
-                count = 1
-                if i + 2 < len(pattern) and pattern[i+2].isdigit():
-                    count = int(pattern[i+2])
-                    i += 1
-                uppercase = string.ascii_uppercase
-                for _ in range(count):
-                    generated_words = [word + c for word in generated_words for c in uppercase]
-                i += 1
-
-            elif pattern[i:i+2] == "!L":
-                count = 1
-                if i + 2 < len(pattern) and pattern[i+2].isdigit():
-                    count = int(pattern[i+2])
-                    i += 1
-                lowercase = string.ascii_lowercase
-                for _ in range(count):
-                    generated_words = [word + c for word in generated_words for c in lowercase]
-                i += 1
-
-            elif pattern[i:i+2] == "!#":
-                count = 1
-                if i + 2 < len(pattern) and pattern[i+2].isdigit():
-                    count = int(pattern[i+2])
-                    i += 1
-                numbers = string.digits
-                for _ in range(count):
-                    generated_words = [word + c for word in generated_words for c in numbers]
-                i += 1
-
-            elif pattern[i:i+2] == "!@":
-                count = 1
-                if i + 2 < len(pattern) and pattern[i+2].isdigit():
-                    count = int(pattern[i+2])
-                    i += 1
-                special_chars = "-=!@#$%^&*()_+[]\{}|;:',./?~"
-                for _ in range(count):
-                    generated_words = [word + c for word in generated_words for c in special_chars]
-                i += 1
-
+            if '-' in pattern[1:j]:
+                start, end = map(int, pattern[1:j].split('-'))
+                remainder = pattern[j:]
             else:
-                generated_words = [word + char for word in generated_words]
+                start = 1
+                if j > 1:
+                    end = int(pattern[1:j])
+                    remainder = pattern[j:]
+                else:
+                    end = 1
 
-            i += 1
+            for count in range(start, end + 1):
+                for combo in itertools.product(charset, repeat=count):
+                    for word in self.generate_from_pattern(remainder, charset):
+                        yield ''.join(combo) + word
 
-        return generated_words
+        elif pattern[:2] == "!U":
+            count = 1
+            if len(pattern) > 2 and pattern[2].isdigit():
+                count = int(pattern[2])
+                remainder = pattern[3:]
+            uppercase = string.ascii_uppercase
+            for combo in itertools.product(uppercase, repeat=count):
+                for word in self.generate_from_pattern(remainder, charset):
+                    yield ''.join(combo) + word
+
+        elif pattern[:2] == "!L":
+            count = 1
+            if len(pattern) > 2 and pattern[2].isdigit():
+                count = int(pattern[2])
+                remainder = pattern[3:]
+            lowercase = string.ascii_lowercase
+            for combo in itertools.product(lowercase, repeat=count):
+                for word in self.generate_from_pattern(remainder, charset):
+                    yield ''.join(combo) + word
+
+        elif pattern[:2] == "!#":
+            count = 1
+            if len(pattern) > 2 and pattern[2].isdigit():
+                count = int(pattern[2])
+                remainder = pattern[3:]
+            numbers = string.digits
+            for combo in itertools.product(numbers, repeat=count):
+                for word in self.generate_from_pattern(remainder, charset):
+                    yield ''.join(combo) + word
+
+        elif pattern[:2] == "!@":
+            count = 1
+            if len(pattern) > 2 and pattern[2].isdigit():
+                count = int(pattern[2])
+                remainder = pattern[3:]
+            special_chars = "-=!@#$%^&*()_+[]\{}|;:',./?~"
+            for combo in itertools.product(special_chars, repeat=count):
+                for word in self.generate_from_pattern(remainder, charset):
+                    yield ''.join(combo) + word
+
+        else:
+            for word in self.generate_from_pattern(remainder, charset):
+                yield char + word
+
 
     def collect_inputs(self) -> bool:
         """Collect input parameters for wordlist generation."""
         print(colored("\nPattern Legend:", "green"))
-        print(colored("!U[n]! - ", "yellow") + "Represents 'n' uppercase letters. E.g. !U3! is AAA to ZZZ.")
-        print(colored("!L[n]! - ", "yellow") + "Represents 'n' lowercase letters. E.g. !L2! is aa to zz.")
-        print(colored("!#[n]! - ", "yellow") + "Represents 'n' numbers. E.g. !#2! is 00 to 99.")
-        print(colored("!@[n]! - ", "yellow") + "Represents 'n' special characters.")
-        print(colored("?   - ", "yellow") + "Represents any character from the sets above.")
         
+        # Basic wildcards
+        print(colored("Wildcards (Represents ALL Possible possible combinations of the category):", "cyan"))
+        print(colored("!U!   - ", "yellow") + "ALL Possible uppercase letters. (A to Z)")
+        print(colored("!L!   - ", "yellow") + "ALL Possible lowercase letters. (a to z)")
+        print(colored("!#    - ", "yellow") + "ALL Possible digits. (0 to 9)")
+        print(colored("!@!   - ", "yellow") + "ALL Possible special characters from the set: -=!@#$%^&*()_+[]\{}|;:',./?~")
+        print(colored("?     - ", "yellow") + "ALL Possible characters from any of the sets above.")
+        
+        # Range feature
+        print(colored("\nNumber Range Feature:", "cyan"))
+        print(colored("!U3!  - ", "yellow") + "Generates ALL Possible combinations of three uppercase letters. (AAA to ZZZ)")
+        print(colored("!L2!  - ", "yellow") + "Generates ALL Possible combinations of two lowercase letters. (aa to zz)")
+        print(colored("!#4!  - ", "yellow") + "Generates ALL Possible combinations of four digits. (0000 to 9999)")
+        print(colored("!@2!  - ", "yellow") + "Generates ALL Possible combinations of two special characters.")
+        
+        # Dynamic range
+        print(colored("Example with Range:", "cyan"))
+        print(colored("?1-3  - ", "yellow") + "Generates ALL Possible combinations of characters from any of the sets above, from 1 to 3 characters long (e.g., a, aa, aaa to z, zz, zzz).")
+        print(colored("!U1-2! - ", "yellow") + "Generates ALL Possible combinations of 1 to 2 uppercase letters. (A to ZZ)")
+        
+        # Example with regular strings
+        print(colored("\nIntegration with Regular Strings:", "cyan"))
+        print("Patterns can be combined with regular characters for custom generation. E.g.")
+        print(colored("'iLove!U!  - ", "yellow") + "Generates: 'iLoveA', 'iLoveB', ... up to 'iLoveZ'.")
+        print(colored("'Pass!#2! - ", "yellow") + "Generates: 'Pass00', 'Pass01', ... up to 'Pass99'.")
+        print(colored("'abc?1-3' - ", "yellow") + "Generates: 'abc?', 'abc??', ... up to 'abc??? - ALL Possible possible combinations for 3 character spaces'.")
+        
+        print("\n")
+    
         self.charset = string.ascii_letters + string.digits + "-=!@#$%^&*()_+[]\{}|;:',./?~"
-        
+    
         self.pattern = input(colored("Enter your word pattern: ", "cyan"))
-        
-        wildcards = {
-            '?': len(self.charset),
-            '!U': 26,  # Uppercase letters
-            '!L': 26,  # Lowercase letters
-            '!#': 10,  # Digits
-            '!@': len("-=!@#$%^&*()_+[]\{}|;:',./?~")  # Special characters
-        }
 
-        self.total_combinations = 1
-        i = 0
-        while i < len(self.pattern):
-            char = self.pattern[i]
+        # Compute total_combinations using the generator
+        self.total_combinations = self.estimate_total_combinations(self.pattern)
 
-            if char in wildcards:
-                self.total_combinations *= wildcards[char]
-                i += 1
-
-            elif self.pattern[i:i+2] in wildcards:
-                count = 1
-                j = i + 2
-                while j < len(self.pattern) and self.pattern[j].isdigit():
-                    j += 1
-                if j > i + 2:
-                    count = int(self.pattern[i+2:j])
-                self.total_combinations *= wildcards[self.pattern[i:i+2]]**count
-                i = j
-
-            else:
-                i += 1
 
         return True
 
+    def estimate_total_combinations(self, pattern: str) -> int:
+        """Estimate the total combinations based on the pattern."""
+        charset_size = len(self.charset)
+        total = 1  # for the base case
 
-    def generate_next_word(self) -> str:
+        i = 0
+        while i < len(pattern):
+            char = pattern[i]
+            if char == '?':
+                j = i + 1
+                while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
+                    j += 1
+                if '-' in pattern[i+1:j]:
+                    start, end = map(int, pattern[i+1:j].split('-'))
+                    total *= sum([charset_size**k for k in range(start, end+1)])
+                    i = j
+                else:
+                    total *= charset_size
+                    i += 1
+            elif char in ['!U', '!L', '!#', '!@']:
+                count = 1
+                if i+2 < len(pattern) and pattern[i+2].isdigit():
+                    count = int(pattern[i+2])
+                    i += 3
+                else:
+                    i += 2
+                total *= count
+            else:
+                i += 1
+
+        return total
+
+
+    def generate_next_word(self):
         """Generate the next word based on the pattern."""
-        words = self.generate_from_pattern(self.pattern, self.charset)
-        
-        for word in words:
+        for word in self.generate_from_pattern(self.pattern, self.charset):
             self.current_word = word
             self.current_position += 1
             yield self.current_word
+
 
     def print_progress(self):
         """Print progress of wordlist generation."""
         while self.is_processing:
             elapsed_time = time.time() - self.start_time
             wps = self.current_position / elapsed_time
-            print(colored(f"\rCurrent Word: [{self.current_word}] -- Progress: ({self.current_position}/{self.total_combinations}) -- Hits: [{self.hits}] -- WPS: [{wps:.2f}]", "green"), end="")
-            time.sleep(5)
+            percentage = (self.current_position / self.total_combinations) * 100
+            progress_line = colored(f"\rCurrent Word: [{self.current_word}] -- Progress: ({self.current_position}/{self.total_combinations}) [{percentage:.2f}%] -- Hits: [{self.hits}] -- WPS: [{wps:.2f}]", "green")
+            sys.stdout.write(progress_line)
+            sys.stdout.flush()
+            time.sleep(0.1)  # Adjusting sleep time to 1 second for more frequent updates
+
+
+    def estimate_file_size(pattern: str, charset: str) -> str:
+        """Estimate the file size based on the pattern."""
+        charset_size = len(charset)
+        total_combinations = 1  # for the base case
+        avg_length = 0
+
+        i = 0
+        while i < len(pattern):
+            char = pattern[i]
+            if char == '?':
+                j = i + 1
+                while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
+                    j += 1
+                if '-' in pattern[i+1:j]:
+                    start, end = map(int, pattern[i+1:j].split('-'))
+                    avg_length += (start + end) / 2
+                    total_combinations *= sum([charset_size**k for k in range(start, end+1)])
+                    i = j
+                else:
+                    avg_length += 1
+                    total_combinations *= charset_size
+                    i += 1
+            elif char in ['!U', '!L', '!#', '!@']:
+                count = 1
+                if i+2 < len(pattern) and pattern[i+2].isdigit():
+                    count = int(pattern[i+2])
+                    i += 3
+                else:
+                    i += 2
+                avg_length += count
+                total_combinations *= count
+            else:
+                avg_length += 1
+                i += 1
+
+        size_bytes = total_combinations * (avg_length + 1)  # +1 for the newline character
+
+        # Convert to human-readable format
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size_bytes < 1024:
+                return f"{size_bytes:.2f} {unit}"
+            size_bytes /= 1024.0
+
 
     async def generate_wordlist(self, check=True):
-        """Generate a wordlist and optionally check it against a database."""
+        """Generate a wordlist and optionALL Possibley check it against a database."""
         wordlist = []
+        
+        # Start the print_progress method as a separate thread
+        self.is_processing = True
+        progress_thread = threading.Thread(target=self.print_progress)
+        progress_thread.start()
+
         for word in self.generate_next_word():
             wordlist.append(word)
             if len(wordlist) == self.batch_size:
@@ -343,16 +454,48 @@ class WordlistGenerator:
                     for w in wordlist:
                         f.write(f"{w}\n")
 
+        # Stop the progress thread
         self.is_processing = False
+        progress_thread.join()
 
     async def check_custom_wordlist(self, filename: str):
         """Check a custom wordlist against a database."""
         with open(filename, 'r') as f:
             wordlist = f.readlines()
 
-        self.start_time = time.time()
-        self.hits = await Checker.check_for_hits(wordlist)
+        # Set the total_combinations attribute to the length of the wordlist
+        self.total_combinations = len(wordlist)
+
+        # Start the print_progress method as a separate thread
+        self.is_processing = True
+        progress_thread = threading.Thread(target=self.print_progress)
+        progress_thread.start()
+
+        # Initialize the current position
+        self.current_position = 0
+    
+        wordlist_chunk = []
+        for word in wordlist:
+            wordlist_chunk.append(word.strip())  # Remove newline characters
+            self.current_position += 1
+            self.current_word = word.strip()
+
+            if len(wordlist_chunk) == self.batch_size:
+                self.hits += await Checker.check_for_hits(wordlist_chunk)
+                wordlist_chunk = []
+    
+        if wordlist_chunk:
+            self.hits += await Checker.check_for_hits(wordlist_chunk)
+
+        # Stop the progress thread
         self.is_processing = False
+        progress_thread.join()
+
+        print(colored(f"\n{'*' * 40}", "yellow"))
+        print(colored(f"Done!", "cyan"))
+        print(colored(f"Hits: {self.hits}/{self.total_combinations}.", "green"))
+        print(colored(f"{'*' * 40}", "yellow"))
+
 
     def reset(self):
         """Reset the state of the generator."""
@@ -369,7 +512,7 @@ if __name__ == '__main__':
 
     while True:
         print(colored("1. Generate and Check Wordlist", "cyan"))
-        print(colored("2. Generate Wordlist Only", "yellow"))
+        print(colored("2. Generate Wordlist Only & Save To File", "yellow"))
         print(colored("3. Use Custom Wordlist for Checking", "blue"))
         print(colored("4. Exit", "cyan"))
 
@@ -388,13 +531,66 @@ if __name__ == '__main__':
             print(colored(f"{'*' * 40}", "yellow"))
 
         elif choice == "2":
+            # Clear the wordlist file
+            open("wordlist.txt", "w").close()
             success = generator.collect_inputs()
             if not success:
                 continue
+
+            def estimate_file_size(pattern: str, charset: str) -> str:
+                """Estimate the file size based on the pattern."""
+                charset_size = len(charset)
+                total_combinations = 1  # for the base case
+                avg_length = 0
+
+                i = 0
+                while i < len(pattern):
+                    char = pattern[i]
+                    if char == '?':
+                        j = i + 1
+                        while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
+                            j += 1
+                        if '-' in pattern[i+1:j]:
+                            start, end = map(int, pattern[i+1:j].split('-'))
+                            avg_length += (start + end) / 2
+                            total_combinations *= sum([charset_size**k for k in range(start, end+1)])
+                            i = j
+                        else:
+                            avg_length += 1
+                            total_combinations *= charset_size
+                            i += 1
+                    elif char in ['!U', '!L', '!#', '!@']:
+                        count = 1
+                        if i+2 < len(pattern) and pattern[i+2].isdigit():
+                            count = int(pattern[i+2])
+                            i += 3
+                        else:
+                            i += 2
+                        avg_length += count
+                        total_combinations *= count
+                    else:
+                        avg_length += 1
+                        i += 1
+
+                size_bytes = total_combinations * (avg_length + 1)  # +1 for the newline character
+
+                # Convert to human-readable format
+                for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+                    if size_bytes < 1024:
+                        return f"{size_bytes:.2f} {unit}"
+                    size_bytes /= 1024.0
+
+            estimated_size = estimate_file_size(generator.pattern, generator.charset)
+            proceed = input(f"Estimated file size: {estimated_size}. Do you want to proceed? (Y/N): ").strip().lower()
+            if proceed != 'y':
+                continue
+
             generator.start_time = time.time()
             generator.is_processing = True
             asyncio.run(generator.generate_wordlist(check=False))
             print("\nWordlist saved to wordlist.txt.")
+
+
 
         elif choice == "3":
             file_name = input(colored("Enter the filename of the wordlist/phrase list: ", "cyan"))
