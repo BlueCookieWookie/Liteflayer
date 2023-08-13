@@ -2,7 +2,7 @@
 
 ## Overview:
 
-Liteflayer is a tool inspired by Brainflayer but designed to work for Litecoin and streamline generated wordlists based on intricate patterns and subsequently converting each line into private keys, public keys, and addresses and then checks them against a database of Litecoin addresses to find a match. Unlike traditional wordlist generators, our tool integrates a distinctive wildcard pattern system with a position range feature. This enhancement provides users with greater flexibility and precision in custom wordlist generation.
+Liteflayer is a tool inspired by Brainflayer but designed to work for Litecoin and streamline generated wordlists based on intricate patterns and subsequently converting each line into private keys, public keys, and addresses and then checks them against a database of Litecoin addresses to find a match. Unlike traditional wordlist generators, this tool integrates a distinctive wildcard pattern system with a position range feature. This enhancement provides users with greater flexibility and precision in custom wordlist generation.
 
 This tool will usually do 100k+ checks per second on modern hardware. 
 I have not had luck getting this to run on Windows unfortunately but you can just use WSL2 anyways.
