@@ -1,4 +1,4 @@
-# Liteflayer - A Really Fast Litecoin Brainwallet Cracker
+# Liteflayer - A Fast Litecoin Brainwallet Cracker Written In Python
 
 ## Overview:
 
