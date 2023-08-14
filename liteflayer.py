@@ -23,6 +23,57 @@ HITS_FILE = 'hits.txt'
 
 
 class LitecoinAddress:
+
+    BECH32_CHARS = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+
+    @staticmethod
+    def convert_bits(data, from_bits, to_bits, pad=True):
+        """Convert data from one bit format to another."""
+        acc = 0
+        bits = 0
+        ret = []
+        maxv = (1 << to_bits) - 1
+        max_acc = (1 << (from_bits + to_bits - 1)) - 1
+        for value in data:
+            acc = ((acc << from_bits) | value) & max_acc
+            bits += from_bits
+            while bits >= to_bits:
+                bits -= to_bits
+                ret.append((acc >> bits) & maxv)
+        if pad:
+            if bits:
+                ret.append((acc << (to_bits - bits)) & maxv)
+        elif bits >= from_bits or ((acc << (to_bits - bits)) & maxv):
+            raise ValueError("Invalid data")
+        return ret
+
+    @staticmethod
+    def bech32_polymod(values):
+        """Internal function that computes the Bech32 checksum."""
+        generator = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
+        chk = 1
+        for value in values:
+            top = chk >> 25
+            chk = (chk & 0x1ffffff) << 5 ^ value
+            for i in range(5):
+                chk ^= generator[i] if ((top >> i) & 1) else 0
+        return chk
+
+    @staticmethod
+    def bech32_create_checksum(hrp, data):
+        """Compute the checksum values given HRP and data."""
+        values = [ord(x) >> 5 for x in hrp] + [0] + [ord(x) & 31 for x in hrp] + data
+        polymod = LitecoinAddress.bech32_polymod(values + [0, 0, 0, 0, 0, 0]) ^ 1
+        return [(polymod >> 5 * (5 - i)) & 31 for i in range(6)]
+
+
+    @staticmethod
+    def public_key_to_litecoin_bech32(pkh):
+        """Convert a public key to a Litecoin Bech32 address."""
+        version = 0
+        address = [version] + LitecoinAddress.convert_bits(pkh, 8, 5)
+        return "ltc1" + ''.join([LitecoinAddress.BECH32_CHARS[d] for d in address + LitecoinAddress.bech32_create_checksum("ltc", address)])
+
     """Utility class for Litecoin address generation and conversions."""
 
     @staticmethod
@@ -53,15 +104,25 @@ class LitecoinAddress:
 
     @staticmethod
     def strings_to_litecoin_addresses(input_strings: list) -> list:
-        """Convert a list of strings to their corresponding Litecoin addresses."""
         addresses = []
         for input_string in input_strings:
             private_key = LitecoinAddress.string_to_private_key(input_string)
             uncompressed_pk, compressed_pk = LitecoinAddress.private_key_to_public_key(private_key)
-            uncompressed_address = LitecoinAddress.public_key_to_litecoin_address(uncompressed_pk, is_compressed=False)
-            compressed_address = LitecoinAddress.public_key_to_litecoin_address(compressed_pk, is_compressed=True)
-            addresses.append((uncompressed_address, compressed_address))
+            uncompressed_address, compressed_address, bech32_address = None, None, None
+
+            if address_choice in ["1", "3"]:
+                uncompressed_address = LitecoinAddress.public_key_to_litecoin_address(uncompressed_pk, is_compressed=False)
+                compressed_address = LitecoinAddress.public_key_to_litecoin_address(compressed_pk, is_compressed=True)
+
+            if address_choice in ["2", "3"]:
+                sha256_hashed = hashlib.sha256(binascii.unhexlify(compressed_pk)).digest()
+                ripemd160_hashed = hashlib.new('ripemd160', sha256_hashed).digest()
+                bech32_address = LitecoinAddress.public_key_to_litecoin_bech32(ripemd160_hashed)
+
+            addresses.append((uncompressed_address, compressed_address, bech32_address))
+
         return addresses
+
 
 
     def custom_hash_func(obj):
@@ -80,10 +141,14 @@ class Checker:
         potential_hits = []
 
         addresses = LitecoinAddress.strings_to_litecoin_addresses(words_chunk)
-        for word, (uncompressed_address, compressed_address) in zip(words_chunk, addresses):
-            if uncompressed_address in bloom_filter or compressed_address in bloom_filter:
+        for word, (uncompressed_address, compressed_address, bech32_address) in zip(words_chunk, addresses):
+            if (address_choice == "1" and (uncompressed_address in bloom_filter or compressed_address in bloom_filter)) or \
+                (address_choice == "2" and bech32_address in bloom_filter) or \
+                (address_choice == "3" and (uncompressed_address in bloom_filter or compressed_address in bloom_filter or bech32_address in bloom_filter)):
+
                 potential_hits.append(word)
         return potential_hits
+
 
 
     @staticmethod
@@ -126,8 +191,8 @@ class Checker:
         hit_count = 0
         for word in potential_hits:
             addresses = LitecoinAddress.strings_to_litecoin_addresses([word])
-            for _, (uncompressed_address, compressed_address) in zip([word], addresses):
-                if cls.address_exists_in_file(uncompressed_address) or cls.address_exists_in_file(compressed_address):
+            for _, (uncompressed_address, compressed_address, bech32_address) in zip([word], addresses):
+                if cls.address_exists_in_file(uncompressed_address) or cls.address_exists_in_file(compressed_address) or cls.address_exists_in_file(bech32_address):
                     private_key = LitecoinAddress.string_to_private_key(word)
                     uncompressed_public_key, compressed_public_key = LitecoinAddress.private_key_to_public_key(private_key)
                     hit_data = {
@@ -136,22 +201,13 @@ class Checker:
                         "uncompressed_public_key": uncompressed_public_key,
                         "compressed_public_key": compressed_public_key,
                         "uncompressed_address": uncompressed_address,
-                        "compressed_address": compressed_address
+                        "compressed_address": compressed_address,
+                        "bech32_address": bech32_address
                     }
                     await cls.print_hit_data(hit_data)
                     hit_count += 1
         return hit_count
 
-    def print_progress(self):
-        """Print progress of wordlist generation."""
-        while self.is_processing:
-            elapsed_time = time.time() - self.start_time
-            wps = self.current_position / elapsed_time
-            percentage = (self.current_position / self.total_combinations) * 100
-            progress_line = colored(f"Current Word: [{self.current_word}] -- Progress: ({self.current_position}/{self.total_combbinations}) [{percentage:.2f}%] -- Hits: [{self.hits}] -- WPS: [{wps:.2f}]", "green")
-            print(progress_line, end="")
-            time.sleep(0.3)
-            print("\033[K\033[F", end="")  # Clear current line and move cursor to the beginning of the line.
 
 
     @staticmethod
@@ -163,20 +219,23 @@ class Checker:
     
         uncompressed_address = LitecoinAddress.public_key_to_litecoin_address(hit_data['uncompressed_public_key'], is_compressed=False)
         compressed_address = LitecoinAddress.public_key_to_litecoin_address(hit_data['compressed_public_key'])
+        bech32_address = hit_data['bech32_address']
         async with aiofiles.open(HITS_FILE, 'a') as f:
-            await f.write(f"Word: {hit_data['word']} - Private Key: {hit_data['private_key']} - Uncompressed Address: {uncompressed_address} - Compressed Address: {compressed_address}\n")
+            await f.write(f"Word: {hit_data['word']} - Private Key: {hit_data['private_key']} - Uncompressed Address: {uncompressed_address} - Compressed Address: {compressed_address} - Bech32 Address: {bech32_address}\n")
         print(colored(f"Private Key                 : {hit_data['private_key']}", "magenta"))
         print(colored(f"Public Key (Uncompressed)   : {hit_data['uncompressed_public_key']}", "magenta"))
         print(colored(f"Uncompressed Address        : {uncompressed_address}", "blue"))
         print(colored(f"Public Key (Compressed)     : {hit_data['compressed_public_key']}", "magenta"))
         print(colored(f"Compressed Address          : {compressed_address}", "blue"))
+        print(colored(f"Bech32 Address               : {bech32_address}", "blue"))
+
 
 
 class WordlistGenerator:
     """Utility class for generating and processing wordlists."""
 
     def __init__(self):
-        self.batch_size = 40000
+        self.batch_size = 20000
         self.current_position = 0
         self.current_word = ""
         self.is_processing = False
@@ -364,7 +423,8 @@ class WordlistGenerator:
             progress_line = colored(f"\rCurrent Word: [{self.current_word}] -- Progress: ({self.current_position}/{self.total_combinations}) [{percentage:.2f}%] -- Hits: [{self.hits}] -- WPS: [{wps:.2f}]", "green")
             sys.stdout.write(progress_line)
             sys.stdout.flush()
-            time.sleep(0.1)  # Adjusting sleep time to 1 second for more frequent updates
+            time.sleep(0.1)  # Adjusting sleep time to 0.1 second for more frequent updates
+
 
 
     async def generate_wordlist(self, check=True):
@@ -502,6 +562,17 @@ class WordlistGenerator:
 if __name__ == '__main__':
     generator = WordlistGenerator()
     print(colored(generator.generate_logo(""), "green"))
+
+    print(colored("Select the type of addresses to generate and check for:", "cyan"))
+    print(colored("1. P2PKH Only", "yellow"))
+    print(colored("2. Bech32 Only", "yellow"))
+    print(colored("3. BOTH P2PKH and Bech32", "yellow"))
+
+    address_choice = input(colored("Choose an address type (1/2/3): ", "cyan"))
+    if address_choice not in ["1", "2", "3"]:
+        print("Invalid choice. Exiting.")
+        sys.exit()
+
 
     while True:
         print(colored("1. Generate & Check Wordlist", "cyan"))
