@@ -11,7 +11,7 @@ Liteflayer is a tool inspired by Brainflayer but designed with a built-in wordli
 ***REMINDER: Later on, if you ever modify your addresses.txt file, make sure to delete the addresses.bloom file before running the program again or else it wont recognize the changes!***
 
 > **TO DO:**
-* Add support for bech32 'ltc1' addresses. Currently only P2PKH 'L' addresses are supported
+* Add support for P2SH 'M' addresses.
 
 ![image](https://github.com/BlueCookieWookie/Liteflayer/assets/118572084/3bb48bb9-67f8-4db1-97ff-55116cfbe8e6)
 
