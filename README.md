@@ -10,6 +10,7 @@ Liteflayer is a tool inspired by Brainflayer but designed with a built-in wordli
 
 ***REMINDER: Later on, if you ever modify your addresses.txt file, make sure to delete the addresses.bloom file before running the program again or else it wont recognize the changes!***
 
+![image](https://github.com/BlueCookieWookie/Liteflayer/assets/118572084/3bb48bb9-67f8-4db1-97ff-55116cfbe8e6)
 
 
 ## Features:
@@ -18,6 +19,10 @@ Liteflayer is a tool inspired by Brainflayer but designed with a built-in wordli
 2. **Wildcard Patterns with Position Ranges**: An advanced system to define patterns, allowing users to specify not just character types, but also the number of characters.
 3. **Efficient Checking Mechanism**: Using a mix of custom made functions, as well as the 'Bit', 'hashlib' library, the tool efficiently validates the generated wordlists allowing you to check against 1000000 GB of words without having to actually store those words on your computer.
 4. **Real-Time Progress Display**: Users are kept informed with an intuitive progress bar, showing the current word, overall progress, hits, and words per second.
+
+
+![image](https://github.com/BlueCookieWookie/Liteflayer/assets/118572084/22fbd020-dd51-43df-ad01-57e42196cd6a)
+
 
 ## ***Wildcard Pattern System:***
 
