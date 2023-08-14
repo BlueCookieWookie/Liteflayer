@@ -517,7 +517,7 @@ class WordlistGenerator:
     def estimate_file_size(self, pattern: str, charset: str) -> str:
         """Estimate the file size based on the pattern."""
         charset_size = len(charset)
-        total_combinations = 1  # for the base case
+        total = 1  # for the base case
         avg_length = 0
 
         i = 0
@@ -530,32 +530,45 @@ class WordlistGenerator:
                 if '-' in pattern[i+1:j]:
                     start, end = map(int, pattern[i+1:j].split('-'))
                     avg_length += (start + end) / 2
-                    total_combinations *= sum([charset_size**k for k in range(start, end+1)])
+                    total *= sum([charset_size**k for k in range(start, end+1)])
                     i = j
                 else:
                     avg_length += 1
-                    total_combinations *= charset_size
+                    total *= charset_size
                     i += 1
-            elif char in ['!U', '!L', '!#', '!@']:
-                count = 1
-                if i+2 < len(pattern) and pattern[i+2].isdigit():
-                    count = int(pattern[i+2])
-                    i += 3
+            elif pattern[i:i+2] in ['!U', '!L', '!#', '!@']:
+                j = i + 2
+                while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
+                    j += 1
+
+                if '-' in pattern[i+2:j]:
+                    start, end = map(int, pattern[i+2:j].split('-'))
+                    avg_length += (start + end) / 2
+                    if pattern[i:i+2] == '!U':
+                        subset_size = 26  # Uppercase letters
+                    elif pattern[i:i+2] == '!L':
+                        subset_size = 26  # Lowercase letters
+                    elif pattern[i:i+2] == '!#':
+                        subset_size = 10  # Digits
+                    elif pattern[i:i+2] == '!@':
+                        subset_size = 28  # Special characters
+                    total *= sum([subset_size**k for k in range(start, end+1)])
+                    i = j
                 else:
-                    i += 2
-                avg_length += count
-                total_combinations *= count
+                    raise ValueError(f"Invalid pattern for {pattern[i:i+2]}. Expected a range format like 1-2.")
             else:
                 avg_length += 1
                 i += 1
 
-        size_bytes = total_combinations * (avg_length + 1)  # +1 for the newline character
+        size_bytes = total * (avg_length + 1)  # +1 for the newline character
 
         # Convert to human-readable format
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
             if size_bytes < 1024:
                 return f"{size_bytes:.2f} {unit}"
             size_bytes /= 1024.0
+
+        return f"{size_bytes:.2f} TB"  # If it's larger than TB, we just show it as TB for simplicity
 
 
 
