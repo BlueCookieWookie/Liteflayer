@@ -172,7 +172,6 @@ class Checker:
         print(colored(f"Compressed Address          : {compressed_address}", "blue"))
 
 
-
 class WordlistGenerator:
     """Utility class for generating and processing wordlists."""
 
@@ -348,8 +347,6 @@ class WordlistGenerator:
 
         return total
 
-
-
     def generate_next_word(self):
         """Generate the next word based on the pattern."""
         for word in self.generate_from_pattern(self.pattern, self.charset):
@@ -502,16 +499,14 @@ class WordlistGenerator:
 
 
 
-
-
 if __name__ == '__main__':
     generator = WordlistGenerator()
     print(colored(generator.generate_logo(""), "green"))
 
     while True:
-        print(colored("1. Generate and Check Wordlist", "cyan"))
-        print(colored("2. Generate Wordlist Only & Save To File", "yellow"))
-        print(colored("3. Use Custom Wordlist for Checking", "blue"))
+        print(colored("1. Generate & Check Wordlist", "cyan"))
+        print(colored("2. Generate Wordlist Only & Save To File", "cyan"))
+        print(colored("3. Check Custom Wordlist", "cyan"))
         print(colored("4. Exit", "cyan"))
 
         choice = input(colored("Select an option: ", "cyan"))
@@ -545,19 +540,10 @@ if __name__ == '__main__':
             if proceed != 'y':
                 continue
 
-
-
-
-
-
             generator.start_time = time.time()
             generator.is_processing = True
             asyncio.run(generator.generate_wordlist(check=False))
             print("\nWordlist saved to wordlist.txt.")
-
-
-
-
 
         elif choice == "3":
             file_name = input(colored("Enter the filename of the wordlist/phrase list: ", "cyan"))
