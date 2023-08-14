@@ -56,9 +56,10 @@ The wildcard system is flexible enough to be integrated with regular strings:
 
 ## How To Use:
 
-1. **Run the Program**: python3 liteflayer.py
-2. **Choose Your Option**: Select from generating and checking a wordlist, generating a wordlist only, using a custom wordlist for checking, or exit.
-3. **Define Your Pattern**: If generating a wordlist, you'll be prompted to provide a pattern. Use the wildcard system explained above to define your pattern.
-4. **Let the Tool Work**: The generator will create the wordlist based on your pattern and, if chosen, check the wordlist against a database of Litecoin addresses.
+1. ***Make sure to put your list of Litecoin addresses in the same directory and name it "addresses.txt"***
+2. **Run the Program**: python3 liteflayer.py
+3. **Choose Your Option**: Select from generating and checking a wordlist, generating a wordlist only, using a custom wordlist for checking, or exit.
+4. **Define Your Pattern**: If generating a wordlist, you'll be prompted to provide a pattern. Use the wildcard system explained above to define your pattern.
+5. **Let the Tool Work**: The generator will create the wordlist based on your pattern and, if chosen, check the wordlist against a database of Litecoin addresses.
 
 
