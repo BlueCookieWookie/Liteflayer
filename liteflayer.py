@@ -268,7 +268,7 @@ class WordlistGenerator:
         char = pattern[0]
         remainder = pattern[1:]
 
-        if char in ['^', '@', '#', '!', '?']:
+        if char == "?":
             j = 1
             while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
                 j += 1
@@ -284,16 +284,30 @@ class WordlistGenerator:
                 else:
                     end = 1
 
-            if char == '^':
+            for count in range(start, end + 1):
+                for combo in itertools.product(charset, repeat=count):
+                    for word in self.generate_from_pattern(remainder, charset):
+                        yield ''.join(combo) + word
+
+        elif pattern[:2] in ['!U', '!L', '!#', '!@']:
+            j = 2
+            while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
+                j += 1
+
+            if '-' in pattern[2:j]:
+                start, end = map(int, pattern[2:j].split('-'))
+                remainder = pattern[j:]
+            else:
+                raise ValueError(f"Invalid pattern for {pattern[:2]}. Expected a range format like 1-2.")
+
+            if pattern[:2] == '!U':
                 subset = string.ascii_uppercase
-            elif char == '@':
+            elif pattern[:2] == '!L':
                 subset = string.ascii_lowercase
-            elif char == '#':
+            elif pattern[:2] == '!#':
                 subset = string.digits
-            elif char == '!':
+            elif pattern[:2] == '!@':
                 subset = "-=!@#$%^&*()_+[]\{}|;:',./?~"
-            elif char == '?':
-                subset = charset
 
             for count in range(start, end + 1):
                 for combo in itertools.product(subset, repeat=count):
@@ -305,47 +319,48 @@ class WordlistGenerator:
                 yield char + word
 
 
+
     def collect_inputs(self) -> bool:
         """Collect input parameters for wordlist generation."""
         print(colored("\nPattern Legend:", "green"))
         
         # Basic wildcards
-        print(colored("Wildcards (Represents ALL Possible combinations of the category):", "cyan"))
-        print(colored("^     - ", "yellow") + "ALL Possible uppercase letters. (A to Z)")
-        print(colored("@     - ", "yellow") + "ALL Possible lowercase letters. (a to z)")
-        print(colored("#     - ", "yellow") + "ALL Possible digits. (0 to 9)")
-        print(colored("!     - ", "yellow") + "ALL Possible special characters from the set: -=!@#$%^&*()_+[]\{}|;:',./?~")
+        print(colored("Wildcards (Represents ALL Possible possible combinations of the category):", "cyan"))
+        print(colored("!U!   - ", "yellow") + "ALL Possible uppercase letters. (A to Z)")
+        print(colored("!L!   - ", "yellow") + "ALL Possible lowercase letters. (a to z)")
+        print(colored("!#    - ", "yellow") + "ALL Possible digits. (0 to 9)")
+        print(colored("!@!   - ", "yellow") + "ALL Possible special characters from the set: -=!@#$%^&*()_+[]\{}|;:',./?~")
         print(colored("?     - ", "yellow") + "ALL Possible characters from any of the sets above.")
         
-        # Examples without Range Feature
-        print(colored("\nExamples without Range Feature:", "cyan"))
-        print(colored("^ello     - ", "yellow") + "Generates ALL Possible combinations of one uppercase letter before the string 'ello'. Aello, Bello, Cello, etc.")
-        print(colored("S@     - ", "yellow") + "Generates ALL Possible combinations of one lowercase letters after the letter 'S'. Sa, Sb, Sc, Sd, etc.")
-        print(colored("# years old     - ", "yellow") + "Generates ALL Possible combinations of one digit before the string ' years old'. 1 years old, 2 years old, 3 years old, etc.")
-        print(colored("Hell!     - ", "yellow") + "Generates ALL Possible combinations of one special character after the string 'Hell'. Hell!, Hell@, Hell#, Hell$, etc.")
+        # Range feature
+        print(colored("\nNumber Range Feature:", "cyan"))
+        print(colored("!U3!  - ", "yellow") + "Generates ALL Possible combinations of three uppercase letters. (AAA to ZZZ)")
+        print(colored("!L2!  - ", "yellow") + "Generates ALL Possible combinations of two lowercase letters. (aa to zz)")
+        print(colored("!#4!  - ", "yellow") + "Generates ALL Possible combinations of four digits. (0000 to 9999)")
+        print(colored("!@2!  - ", "yellow") + "Generates ALL Possible combinations of two special characters.")
         
-        # Examples with Range Feature
-        print(colored("\nExamples with Range Feature:", "cyan"))
-        print(colored("^1-3  - ", "yellow") + "Generates ALL Possible combinations of characters from uppercase letters, from 1 to 3 characters long (e.g., A, AA, AAA to Z, ZZ, ZZZ).")
-        print(colored("@1-2  - ", "yellow") + "Generates ALL Possible combinations of 1 to 2 lowercase letters. (a to zz)")
-        print(colored("#1-4  - ", "yellow") + "Generates ALL Possible combinations of 1 to 4 digits. (0 to 9999)")
-        print(colored("!1-2  - ", "yellow") + "Generates ALL Possible combinations of 1 to 2 special characters.")
+        # Dynamic range
+        print(colored("Example with Range:", "cyan"))
+        print(colored("?1-3  - ", "yellow") + "Generates ALL Possible combinations of characters from any of the sets above, from 1 to 3 characters long (e.g., a, aa, aaa to z, zz, zzz).")
+        print(colored("!U1-2! - ", "yellow") + "Generates ALL Possible combinations of 1 to 2 uppercase letters. (A to ZZ)")
         
-        # Examples with regular strings
-        print(colored("\nExamples with Regular Strings:", "cyan"))
+        # Example with regular strings
+        print(colored("\nIntegration with Regular Strings:", "cyan"))
         print("Patterns can be combined with regular characters for custom generation. E.g.")
-        print(colored("'iLove^  - ", "yellow") + "Generates: 'iLoveA', 'iLoveB', ... up to 'iLoveZ'.")
-        print(colored("'Pass#2 - ", "yellow") + "Generates: 'Pass00', 'Pass01', ... up to 'Pass99'.")
-        print(colored("'abc?1-3' - ", "yellow") + "Generates: 'abc?', 'abc??', ... up to 'abc??? - ALL Possible combinations for 3 character spaces'.")
-        print(colored("'xyz!' - ", "yellow") + "Generates combinations with one special character after 'xyz'. E.g., 'xyz-', 'xyz=', ...")
+        print(colored("'iLove!U!  - ", "yellow") + "Generates: 'iLoveA', 'iLoveB', ... up to 'iLoveZ'.")
+        print(colored("'Pass!#2! - ", "yellow") + "Generates: 'Pass00', 'Pass01', ... up to 'Pass99'.")
+        print(colored("'abc?1-3' - ", "yellow") + "Generates: 'abc?', 'abc??', ... up to 'abc??? - ALL Possible possible combinations for 3 character spaces'.")
         
         print("\n")
-
+    
         self.charset = string.ascii_letters + string.digits + "-=!@#$%^&*()_+[]\{}|;:',./?~"
+    
         self.pattern = input(colored("Enter your word pattern: ", "cyan"))
 
         # Compute total_combinations using the generator
         self.total_combinations = self.estimate_total_combinations(self.pattern)
+
+
         return True
 
     def estimate_total_combinations(self, pattern: str) -> int:
@@ -367,25 +382,25 @@ class WordlistGenerator:
                 else:
                     total *= charset_size
                     i += 1
-            elif char in ['^', '@', '#', '!']:
-                j = i + 1
+            elif pattern[i:i+2] in ['!U', '!L', '!#', '!@']:
+                j = i + 2
                 while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
                     j += 1
 
-                if '-' in pattern[i+1:j]:
-                    start, end = map(int, pattern[i+1:j].split('-'))
-                    if char == '^':
+                if '-' in pattern[i+2:j]:
+                    start, end = map(int, pattern[i+2:j].split('-'))
+                    if pattern[i:i+2] == '!U':
                         subset_size = 26  # Uppercase letters
-                    elif char == '@':
+                    elif pattern[i:i+2] == '!L':
                         subset_size = 26  # Lowercase letters
-                    elif char == '#':
+                    elif pattern[i:i+2] == '!#':
                         subset_size = 10  # Digits
-                    elif char == '!':
+                    elif pattern[i:i+2] == '!@':
                         subset_size = 28  # Special characters
                     total *= sum([subset_size**k for k in range(start, end+1)])
                     i = j
                 else:
-                    raise ValueError(f"Invalid pattern for {pattern[i]}. Expected a range format like 1-2.")
+                    raise ValueError(f"Invalid pattern for {pattern[i:i+2]}. Expected a range format like 1-2.")
             else:
                 i += 1
 
@@ -521,26 +536,26 @@ class WordlistGenerator:
                     avg_length += 1
                     total *= charset_size
                     i += 1
-            elif char in ['^', '@', '#', '!']:
-                j = i + 1
+            elif pattern[i:i+2] in ['!U', '!L', '!#', '!@']:
+                j = i + 2
                 while j < len(pattern) and (pattern[j].isdigit() or pattern[j] == '-'):
                     j += 1
 
-                if '-' in pattern[i+1:j]:
-                    start, end = map(int, pattern[i+1:j].split('-'))
+                if '-' in pattern[i+2:j]:
+                    start, end = map(int, pattern[i+2:j].split('-'))
                     avg_length += (start + end) / 2
-                    if char == '^':
+                    if pattern[i:i+2] == '!U':
                         subset_size = 26  # Uppercase letters
-                    elif char == '@':
+                    elif pattern[i:i+2] == '!L':
                         subset_size = 26  # Lowercase letters
-                    elif char == '#':
+                    elif pattern[i:i+2] == '!#':
                         subset_size = 10  # Digits
-                    elif char == '!':
+                    elif pattern[i:i+2] == '!@':
                         subset_size = 28  # Special characters
                     total *= sum([subset_size**k for k in range(start, end+1)])
                     i = j
                 else:
-                    raise ValueError(f"Invalid pattern for {pattern[i]}. Expected a range format like 1-2.")
+                    raise ValueError(f"Invalid pattern for {pattern[i:i+2]}. Expected a range format like 1-2.")
             else:
                 avg_length += 1
                 i += 1
